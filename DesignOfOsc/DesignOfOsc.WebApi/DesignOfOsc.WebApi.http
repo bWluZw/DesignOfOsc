@@ -1,0 +1,6 @@
+@DesignOfOsc.WebApi_HostAddress = http://localhost:5058
+
+GET {{DesignOfOsc.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
