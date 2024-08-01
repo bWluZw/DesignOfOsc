@@ -8,4 +8,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DesignOfOsc.Library\DesignOfOsc.Library.csproj" />
+  </ItemGroup>
+
 </Project>

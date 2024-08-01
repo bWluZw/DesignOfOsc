@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using DesignOfOsc.Library.Services.MLSerivces;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -19,6 +20,12 @@ namespace DesignOfOsc.Wpf
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            ModelTrainingService service = new ModelTrainingService();
+            service.ModelInit();
         }
     }
 }
