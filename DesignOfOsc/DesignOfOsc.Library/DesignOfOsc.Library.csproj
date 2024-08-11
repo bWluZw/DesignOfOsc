@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.AutoML" Version="0.21.1" />
     <PackageReference Include="Microsoft.ML.TensorFlow" Version="3.0.1" />
   </ItemGroup>
 
