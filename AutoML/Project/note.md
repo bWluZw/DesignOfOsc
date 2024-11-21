@@ -7,6 +7,22 @@ conda create --prefix D:\Project\Thesis\DesignOfOsc\AutoML\pyscf_env python=3.8
 conda env remove -p D:\Others\备份\Thesis\DesignOfOsc\AutoML\pyscf_env
 conda env remove --name pyscf_env
 
+conda activate D:\Project\ThesisProject\AutoML\conda_env
+conda deactivate
+
+##### 别名
+conda env config vars set alias=my_alias
+
+##### conda清缓存
+conda clean --packages --tarballs
+conda clean --all
+
+conda update conda
+
+conda activate base
+conda install --revision 0
+
+
 ## docker
 ##### docker容器启动命令：
 docker start gpu_pyscf
