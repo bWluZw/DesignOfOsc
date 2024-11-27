@@ -9,6 +9,12 @@ conda env remove --name pyscf_env
 
 conda activate D:\Project\ThesisProject\AutoML\conda_env
 conda deactivate
+##### 导出
+conda list -e > r.txt 
+conda env export > r.yml
+##### 导入
+conda install --file requirements.txt 
+conda env create -f r.yml
 
 ##### 别名
 conda env config vars set alias=my_alias
