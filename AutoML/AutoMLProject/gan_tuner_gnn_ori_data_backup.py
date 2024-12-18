@@ -12,8 +12,96 @@ from sklearn.preprocessing import StandardScaler
 from rdkit.Chem import AllChem
 from rdkit import Chem
 
-
+import networkx as nx
 from sklearn.model_selection import train_test_split
+
+# 示例：从图的节点和边恢复分子并转换为SMILES
+def graph_to_smiles(node_features, adjacency_matrix):
+    # 创建一个空的RDKit分子对象
+    mol = Chem.RWMol()
+
+    # 添加原子（假设节点特征是原子序数）
+    atom_map = {}
+    for idx, atom_feature in enumerate(node_features):
+        atom = Chem.Atom(int(atom_feature[0]))  # 原子序数为节点特征
+        atom_idx = mol.AddAtom(atom)
+        atom_map[idx] = atom_idx
+
+    # 添加键（根据邻接矩阵）
+    num_atoms = len(node_features)
+    for i in range(num_atoms):
+        for j in range(i + 1, num_atoms):  # 遍历上三角矩阵，避免重复
+            if adjacency_matrix[i, j] != 0:  # 如果有边
+                bond_order = 1  # 可以根据需要选择键级，例如1表示单键
+                mol.AddBond(atom_map[i], atom_map[j], Chem.BondType.SINGLE)
+
+    # 使用RDKit将分子对象转为SMILES字符串
+    mol = mol.GetMol()  # 转换为不可修改的分子对象
+    if mol is not None:
+        smiles = Chem.MolToSmiles(mol)
+        return smiles
+    else:
+        return None
+
+# Helper function to convert SMILES to graph features
+def smiles_to_graph(smiles, other):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    
+    # Create NetworkX graph
+    G = nx.Graph()
+    
+    # Add atom nodes with atomic number as feature
+    for atom in mol.GetAtoms():
+        G.add_node(atom.GetIdx(), feature=atom.GetAtomicNum())
+    
+    # Add bonds as edges
+    for bond in mol.GetBonds():
+        G.add_edge(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+    
+    # Get node features (atomic numbers)
+    node_features = np.array([G.nodes[i]['feature'] for i in range(len(G.nodes))]).reshape(-1, 1)
+    
+    # Add additional features
+    tensor_list = []
+    for item in other:
+        if item == '-':
+            item = 0
+        tensor_list.append(float(item))
+    additional_features = np.full((node_features.shape[0], len(tensor_list)), tensor_list)
+    
+    node_features = np.hstack([node_features, additional_features])
+    
+    graph_data = [node_features,nx.to_numpy_array(G)]
+    
+    return graph_data
+
+# Data loading function for Keras
+def load_data(csv_file):
+    df = pd.read_csv(csv_file, encoding='utf-8')
+
+    smiles = df['SMILES_str'].to_numpy()
+    other = df[['pce','e_lumo_alpha', 'e_gap_alpha', 'e_homo_alpha', 'jsc', 'voc', 'mass']].to_numpy()
+    
+    # Vectorize and normalize
+    other = np.vectorize(lambda x: float(x) if x != '-' else 0)(other)
+    scaler = StandardScaler()
+    normalized_other = scaler.fit_transform(other)
+    
+    # Prepare data
+    graph_data_list = []
+    for s, other_item in zip(smiles, normalized_other):
+        graph_data = smiles_to_graph(s, other_item)
+        if graph_data is not None:
+            graph_data_list.append(graph_data)
+    
+    # Split data into train and test
+    train_size = int(0.9 * len(graph_data_list))
+    train_data = graph_data_list[:train_size]
+    test_data = graph_data_list[train_size:]
+    
+    return train_data, test_data
 
 def load_data(csv_file):
     df = pd.read_csv(csv_file,encoding='utf-8')
@@ -126,20 +214,21 @@ class HyperGAN(kt.HyperModel):
 
     def make_generator_model(self, hp):
 
-        model = models.Sequential()
+        x_model = models.Sequential()
 
-        model = tf.keras.Sequential()
-        model.add(layers.InputLayer(input_shape=(self.latent_dim,)))
-        units_1 = hp.Int('units_1', min_value=64, max_value=512, step=64)
-        units_2 = hp.Int('units_2', min_value=64, max_value=512, step=64)
+        # model = tf.keras.Sequential()
+        
+        x_model.add(layers.InputLayer(input_shape=(self.latent_dim,)))
+        # units_1 = hp.Int('units_1', min_value=64, max_value=512, step=64)
+        # units_2 = hp.Int('units_2', min_value=64, max_value=512, step=64)
 
-        model.add(layers.Dense(units_1, activation='relu'))
-        model.add(layers.Dense(units_2, activation='relu'))
-        model.add(
+        # model.add(layers.Dense(units_1, activation='relu'))
+        # model.add(layers.Dense(units_2, activation='relu'))
+        x_model.add(
             layers.Dense(self.vocab_size, activation="tanh")
         )  # 假设 SMILES 是通过向量表示
-
-        return model
+        node_features = layers.Reshape((num_nodes, num_features))(x)
+        return x_model
 
     def make_discriminator_model(self,hp):
         model = tf.keras.Sequential()
@@ -213,7 +302,7 @@ def create_op(hp,config):
 def main():
     
     csv_file = 'D:\Project\ThesisProject\AutoML\data\moldata_part_test.csv'
-    X_train, X_test, y_train, y_test = load_data(csv_file)
+    train_data,test_data  = load_data(csv_file)
     
     trials = 10
     
