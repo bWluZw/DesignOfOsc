@@ -179,7 +179,7 @@ class GAN(keras.Model):
         total_score = (rate_score + target_score + stability_score) / 3
         return total_score
 
-    def train_step(self, real_data,callbacks=None):
+    def train_step(self, real_data):
 
         batch_size = tf.shape(real_data[0]).numpy()
         batch_size = int(batch_size[0])
@@ -244,7 +244,10 @@ class GAN(keras.Model):
         dics_score = self.score_loss(disc_loss_float,self.disc_last_loss)
         
         total_score = gen_score+dics_score
-        
+                
+        # for callback in callbacks:
+        # # The "my_metric" is the objective passed to the tuner.
+        #     callback.on_epoch_end(1, logs={"my_metric": 1})
         self.gen_last_loss = gen_loss_float
         self.disc_last_loss = disc_loss_float
         return {
@@ -411,12 +414,13 @@ class HyperGAN(kt.HyperModel):
         self.gan_model = model_gan
         return model_gan
 
-    def fit(self, hp, model, x,callbacks=None, **kwargs):
+    def fit(self, hp, model, x,  *args, **kwargs):
         batch_size = get_hp_value(hp,self.config,"batch_size")
         x = x.batch(batch_size)
 
-        res = model.fit(x,**kwargs)
+        res = model.fit(x,*args,**kwargs)
 
+        
         # print(f'fit:{len(self.gan_model.gen_loss_list)}')
         # noise1 = tf.random.normal(shape=self.input_dim1_shape)  # 噪声维度
         # noise2 = tf.random.normal(shape=self.input_dim2_shape)  # 噪声维度
@@ -426,6 +430,7 @@ class HyperGAN(kt.HyperModel):
         # return 1-float(custom_score)
         # res = self.gan_model.gen_loss_tracker.result()
         #total_score
+        # return res.history
         return res.history
     
 
@@ -454,7 +459,7 @@ def get_hp_value(hp,config,key):
         return res
     else:
         return None
-    
+
 def main():
     
     csv_file = 'D:\Project\ThesisProject\AutoML\data\moldata_part_test.csv'
@@ -499,31 +504,23 @@ def main():
             "_type":"Choice",
             "_value":[32,64,96,128]
         },
-        "max_trials":3,
+        "max_trials":1,
         # "batch_size":32
     }
-    from tensorflow.keras.callbacks import ModelCheckpoint
-    import os
-    checkpoint_callback = ModelCheckpoint(
-    'path_to_save_checkpoints/gan_model_checkpoint_{epoch}.h5',
-    save_best_only=True,
-    save_weights_only=False,
-    monitor='val_loss',
-    mode='min',  # 根据你的目标选择'min'或者'max'
-    verbose=1
-    )
-    checkpoint_path = ".model_save/cp.ckpt"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
 
-    # Create a callback that saves the model's weights
-    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                    save_weights_only=True,
-                                                    verbose=1)
+    
+    import time
+    now = time.strftime("%Y%m%d%H%M%S", time.localtime())
+    # # Create a callback that saves the model's weights
+    # cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+    #                                                 save_weights_only=True,
+    #                                                 verbose=1)
     
     tf.config.experimental_run_functions_eagerly(True)
     input_dim1_shape = train_data[0][0].shape
     input_dim2_shape = train_data[0][1].shape
-    LOG_DIR = f"{int(time.time())}" 
+    LOG_DIR = f"gan_keras_model_{now}" 
+    # LOG_DIR = os.path.normpath('C:/')
     tuner = kt.BayesianOptimization(
         # hypermodel=HyperGAN(search_space,train_data[0].shape[1],1030),
         hypermodel=HyperGAN(search_space,input_dim1_shape,input_dim2_shape),
@@ -549,15 +546,14 @@ def main():
     dataset3 = tf.data.Dataset.from_tensor_slices((item1_list,item2_list))
     
     tuner.search(
-        x = dataset3, epochs = 5, callbacks=[cp_callback]
+        x = dataset3, epochs = 1
         )
 
     tuner.results_summary()
     # tuner.export_model()
     # best_model = tuner.get_best_models()[0]
     
-    import time
-    now = time.strftime("%Y%m%d%H%M%S", time.localtime())
+
     best_hps = tuner.get_best_hyperparameters()[0]
     print(best_hps.values)
     
@@ -571,7 +567,7 @@ def main():
     # #Loading weights
     # loaded_weights=encoder.load_weights(encoder_prefix)
     
-
+    # GLOBAL_MODEL.save
     best_model = tuner.get_best_models()[0]
     shape = [None, 8]
     placeholder_tensor1 = tf.TensorSpec(shape, dtype=tf.float32)

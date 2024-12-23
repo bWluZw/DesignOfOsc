@@ -114,7 +114,8 @@ def load_data(csv_file, batch_size):
 
     pce = df['pce'].to_numpy().astype(np.float32)
     smiles = df['SMILES_str']
-    other = df[['e_lumo_alpha','e_gap_alpha','e_homo_alpha','jsc','voc','mass']].to_numpy().astype(np.float32)
+    # other = df[['e_lumo_alpha','e_gap_alpha','e_homo_alpha','jsc','voc','mass']].to_numpy().astype(np.float32)
+    other = df[['e_lumo_alpha','e_gap_alpha','e_homo_alpha','mass']].to_numpy().astype(np.float32)
 
     scaler = StandardScaler()
     other = scaler.fit_transform(other)
@@ -197,15 +198,15 @@ def main():
     csv_file = 'D:\Project\ThesisProject\AutoML\data\moldata_part_test.csv'
     X_train, X_test, y_train, y_test = load_data(csv_file, search_space['batch_size'])
 
-    from keras.models import load_model
-    loaded_model = load_model(
-        r"D:\Project\ThesisProject\auto_model\best_model", custom_objects=ak.CUSTOM_OBJECTS
-    )
+    # from keras.models import load_model
+    # loaded_model = load_model(
+    #     r"D:\Project\ThesisProject\auto_model\best_model", custom_objects=ak.CUSTOM_OBJECTS
+    # )
 
-    print(type(loaded_model))
+    # print(type(loaded_model))
 
-    predicted_y = loaded_model.evaluate(X_test,y_test)
-    print(predicted_y)
+    # predicted_y = loaded_model.evaluate(X_test,y_test)
+    # print(predicted_y)
 
     # 创建 AutoModel 对象进行回归任务
     search_space = {
@@ -213,32 +214,36 @@ def main():
         "learning_rate": [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
         # 其他超参数设置
     }
-
+    
+    import time
+        
+    now = time.strftime("%Y%m%d%H%M%S", time.localtime())
+    LOG_DIR = r'AutoML\models\gan_model\tuner'+f"\gan_keras_model_{now}" 
     regressor = ak.AutoModel(
         inputs=ak.StructuredDataInput(),  # 输入为结构化数据
         outputs=ak.RegressionHead(),  # 输出为回归任务
-        max_trials=50,  # 超参数搜索的最大次数
+        max_trials=1,  # 超参数搜索的最大次数
         objective="val_loss",  # 优化目标为验证损失
         overwrite=True,  # 如果已有模型则覆盖
         tuner='bayesian',
-        project_name='pce_project_model'
+        project_name='pce_project_model',
+        directory=LOG_DIR
     )
     ak.BayesianOptimization
     try:
         
         # 开始超参数调优
-        regressor.fit(X_train, y_train, epochs=50, validation_data=(X_test, y_test))
+        regressor.fit(X_train, y_train, epochs=1, validation_data=(X_test, y_test))
     except Exception as e:
         print(e)
     finally:
         # 输出最佳模型
         best_model = regressor.export_model()
-        import time
-        
-        now = time.strftime("%Y%m%d%H%M%S", time.localtime())
 
 
-        best_model.save(f'D:\Project\ThesisProject\AutoML\Project2\AutoKerasProject\model\{now}_model.h5py')
+
+        best_model.save(f'D:\Project\ThesisProject\AutoML\models\pce_model\best_model\{now}_pce_model')
+        # best_model.save(f'D:\Project\ThesisProject\AutoML\Project2\AutoKerasProject\model\{now}_model.h5py')
         # best_model.save(f'D:\Project\ThesisProject\AutoML\Project2\AutoKerasProject\model\{now}_model.h5py')
         # 评估最佳模型
         loss, mae = best_model.evaluate(X_test, y_test)
