@@ -237,8 +237,8 @@ class GAN(keras.Model):
             disc_last_loss = self.disc_loss_tracker.result()
 
             # 返回每个epoch的损失值
-        gen_loss_float = float(self.gen_loss_tracker.result().numpy())
-        disc_loss_float = float(self.disc_loss_tracker.result().numpy())
+            gen_loss_float = float(self.gen_loss_tracker.result().numpy())
+            disc_loss_float = float(self.disc_loss_tracker.result().numpy())
         
         gen_score = self.score_loss(gen_loss_float,self.gen_last_loss)
         dics_score = self.score_loss(disc_loss_float,self.disc_last_loss)

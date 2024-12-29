@@ -397,15 +397,16 @@ class HyperGAN(kt.HyperModel):
         model_gan = GAN(self.discriminator, self.generator, self.input_dim1_shape, self.input_dim2_shape)
         # print(model_gan)
         # 生成器优化器
-        gen_optimizer =create_op(hp,self.config)
+        self.g_optimizer = create_op(hp,self.config,"g_optimizer","g_learning_rate")
         # 判别器优化器
-        disc_optimizer =  create_op(hp,self.config)
+        self.d_optimizer =create_op(hp,self.config,"d_optimizer","d_learning_rate")
+
 
         # adam_optimizer = tf.keras.optimizers.Adam(1e-4)
 
         binary_crossentropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
         # 已重写compile
-        model_gan.compile(gen_optimizer,disc_optimizer,binary_crossentropy)
+        model_gan.compile(self.g_optimizer,self.d_optimizer,binary_crossentropy)
         self.gan_model = model_gan
         return model_gan
     def score_function(self, data,n_split=10, eps=10**-16):
@@ -427,9 +428,6 @@ class HyperGAN(kt.HyperModel):
         
         self.loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
         
-        self.d_optimizer =create_op(hp,self.config,"d_optimizer","d_learning_rate")
-
-        self.g_optimizer = create_op(hp,self.config,"g_optimizer","g_learning_rate")
         self.disc_loss_tracker = keras.metrics.Mean(name="discriminator_loss")
         self.gen_loss_tracker = keras.metrics.Mean(name="generator_loss")
         

@@ -11,7 +11,7 @@ from rdkit import Chem
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-
+import keras.callbacks
 from tensorflow.keras import layers
 
 # region 数据处理
@@ -218,22 +218,23 @@ def main():
     import time
         
     now = time.strftime("%Y%m%d%H%M%S", time.localtime())
-    LOG_DIR = r'AutoML\models\gan_model\tuner'+f"\gan_keras_model_{now}" 
+    LOG_DIR = r'AutoML\models\gan_model\tuner\pce_keras_model_'+now
     regressor = ak.AutoModel(
         inputs=ak.StructuredDataInput(),  # 输入为结构化数据
         outputs=ak.RegressionHead(),  # 输出为回归任务
-        max_trials=1,  # 超参数搜索的最大次数
+        max_trials=20,  # 超参数搜索的最大次数
         objective="val_loss",  # 优化目标为验证损失
         overwrite=True,  # 如果已有模型则覆盖
         tuner='bayesian',
         project_name='pce_project_model',
         directory=LOG_DIR
     )
-    ak.BayesianOptimization
+    # ak.BayesianOptimization
     try:
-        
+        work_path = os.getcwd()
+        tb_log_path = os.path.join(work_path,regressor.directory)
         # 开始超参数调优
-        regressor.fit(X_train, y_train, epochs=1, validation_data=(X_test, y_test))
+        regressor.fit(X_train, y_train, epochs=50, validation_data=(X_test, y_test),callbacks=[keras.callbacks.TensorBoard(log_dir=tb_log_path, histogram_freq=0,write_images=True)])
     except Exception as e:
         print(e)
     finally:
@@ -242,7 +243,7 @@ def main():
 
 
 
-        best_model.save(f'D:\Project\ThesisProject\AutoML\models\pce_model\best_model\{now}_pce_model')
+        best_model.save(r'D:\Project\ThesisProject\AutoML\models\pce_model\best_model\pce_model_'+now)
         # best_model.save(f'D:\Project\ThesisProject\AutoML\Project2\AutoKerasProject\model\{now}_model.h5py')
         # best_model.save(f'D:\Project\ThesisProject\AutoML\Project2\AutoKerasProject\model\{now}_model.h5py')
         # 评估最佳模型
